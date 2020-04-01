@@ -41,8 +41,8 @@ void loop() {
   bool isParentalOverride = parentalOverrideValue > 1300;
   bool isRemoteControl = digitalRead(DRIVE_MODE_PIN);
 
-  
-  char gear = readGearstick();
+
+  int gear = readGearstick();
   Serial.println(gear);
 
   int steeringAngle = 90;
@@ -131,26 +131,23 @@ int readRemoteThrottlePosition()
   return throttlePosition;
 }
 
-char readGearstick()
+int readGearstick()
 {
   //Determine Gearsstick potion
   bool forwardValue = digitalRead(DRIVE_DIRECTION_FORWARD_PIN);
   bool reverseValue = digitalRead(DRIVE_DIRECTION_REVERSE_PIN);
-  char gear = 0;
+  int gear = 0;
 
   if (!forwardValue) // Runs if gearstick is forwards
   {
-    return char gear = "Forward";
-
-  };
+    return gear = 1;
+  }
   if (!reverseValue) // Runs if gearstick is reverse
   {
-    return char gear = "Reverse";
-
-  };
+    return gear = 2;
+  }
   if (forwardValue && reverseValue) // Runs if gearstick is neutral
   {
-    return char gear = "Neutral";
-
+    return gear = 3;
   };
 }
