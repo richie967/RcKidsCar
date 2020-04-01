@@ -12,7 +12,6 @@ const int THROTTLE_OUTPUT_PIN = 10;
 const int DRIVE_DIRECTION_FORWARD_PIN = 13;
 const int DRIVE_DIRECTION_REVERSE_PIN = 12;
 
-
 Servo _steeringServo;
 
 void setup() {
