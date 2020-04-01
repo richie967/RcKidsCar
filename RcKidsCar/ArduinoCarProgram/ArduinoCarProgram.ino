@@ -8,6 +8,7 @@ const int STEERING_CENTRE_MINIMUM = 86;
 const int STEERING_CENTRE_MAXIMUM = 96;
 const int PARENTAL_OVERRIDE_PIN = 5;
 const int THROTTLE_INPUT_REMOTE_PIN = 9;
+const int THROTTLE_INPUT_MANUAL_PIN = 2;
 const int THROTTLE_OUTPUT_PIN = 10;
 const int DRIVE_DIRECTION_FORWARD_PIN = 13;
 const int DRIVE_DIRECTION_REVERSE_PIN = 12;
@@ -25,27 +26,32 @@ void setup() {
   pinMode(THROTTLE_INPUT_REMOTE_PIN, INPUT);
   pinMode(DRIVE_DIRECTION_FORWARD_PIN, INPUT_PULLUP);
   pinMode(DRIVE_DIRECTION_REVERSE_PIN, INPUT_PULLUP);
+  pinMode(THROTTLE_INPUT_MANUAL_PIN, INPUT_PULLUP);
 
+
+  // Outputs
   _steeringServo.attach(STEERING_SERVO_PIN, 700, 2400);
   _steeringServo.write(90);
 
   Serial.begin(9600);
-  Serial.println("Initialise Program");
+  Serial.println("Welcome to the Arduino Car program");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
 
+  // In Car Controls
   int parentalOverrideValue = pulseIn(PARENTAL_OVERRIDE_PIN, HIGH);
-  bool isParentalOverride = parentalOverrideValue > 1300;
+
+  // Remote Controls
+  bool isParentalOverride = parentalOverrideValue > 1300; // This reads a button on the Remote control that determines if the parent should override the cr controls
   bool isRemoteControl = digitalRead(DRIVE_MODE_PIN);
 
-
-  int gear = readGearstick();
-  Serial.println(gear);
-
+  // Variables that get set by the remote control or the in car controls
   int steeringAngle = 90;
   int throttlePosition = 0;
+
+  // Variables that get set from the in car controls
+  int gear = readGearstick();
 
   // If Remote control or parent override is on
 
@@ -53,6 +59,8 @@ void loop() {
   {
     steeringAngle = readRemoteSteeringAngle();
     throttlePosition = readRemoteThrottlePosition();
+    Serial.println("Remote or override is on");
+    Serial.println(throttlePosition);
   }
 
 
@@ -61,6 +69,9 @@ void loop() {
   else
   {
     steeringAngle = readManualSteeringAngle();
+    throttlePosition = readManualThrottlePosition();
+    Serial.println("Manual Throttle is on");
+    Serial.println(throttlePosition);
   }
 
   if (steeringAngle >= STEERING_CENTRE_MINIMUM && steeringAngle <= STEERING_CENTRE_MAXIMUM)
@@ -79,11 +90,10 @@ void loop() {
   //  Serial.print(" Is Parent Override= ");
   //  Serial.print(isParentalOverride);
   //  Serial.println();
-
   _steeringServo.write(steeringAngle);
-
-
 }
+
+// End of Main Loop Function
 
 int readManualSteeringAngle()
 {
@@ -97,6 +107,14 @@ int readRemoteSteeringAngle()
   int steeringPosition = 90;
   int steeringValue = pulseIn(STEERING_INPUT_REMOTE_PIN, HIGH);
   return map(steeringValue, 990, 1990, 0, 180);
+}
+
+int readManualThrottlePosition()
+{
+  int throttlePosition = 0;
+  int manualthrottlePosition = digitalRead(THROTTLE_INPUT_MANUAL_PIN);
+  return throttlePosition = manualthrottlePosition;
+  
 }
 
 int readRemoteThrottlePosition()
@@ -149,4 +167,5 @@ int readGearstick()
   {
     return gear = 3;
   };
+
 }
