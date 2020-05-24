@@ -69,8 +69,29 @@ void loop() {
   else
   {
     steeringAngle = readManualSteeringAngle();
-    throttlePosition = readManualThrottlePosition();
+    Serial.println("Gear in main loop function");
+    Serial.println(gear);
+    
+    Serial.println("Throttle Position at top of function");
+    Serial.println(throttlePosition);
+    if (gear == 1 && throttlePosition == 0) // Forward gear selected and foot pedal pressed down
+    {
+      throttlePosition = 25;
+    };
+    if (gear == 2 && throttlePosition == 0) // Reverse gear selected and foot pedal pressed down
+    {
+      throttlePosition = -25;
+    };
+    if (gear == 3 && throttlePosition == 1) // Neutral is selected, set throttle to disabled
+    {
+    Serial.println("Throttle Disabled");
+      throttlePosition = 0;
+    };
+
+    
+
     Serial.println("Manual Throttle is on");
+    Serial.println("Throttle Position at bottom of function");
     Serial.println(throttlePosition);
   }
 
@@ -91,6 +112,7 @@ void loop() {
   //  Serial.print(isParentalOverride);
   //  Serial.println();
   _steeringServo.write(steeringAngle);
+  delay(3000);
 }
 
 // End of Main Loop Function
@@ -113,6 +135,8 @@ int readManualThrottlePosition()
 {
   int throttlePosition = 0;
   int manualthrottlePosition = digitalRead(THROTTLE_INPUT_MANUAL_PIN);
+  Serial.println("Manual Throtte Position From sub function");
+  Serial.println("manualthrottlePosition");
   return throttlePosition = manualthrottlePosition;
   
 }
@@ -167,5 +191,7 @@ int readGearstick()
   {
     return gear = 3;
   };
+  Serial.println("Gear from Function");
+  Serial.println(gear);
 
 }
