@@ -1,155 +1,197 @@
-/*
-  This sketch uses a single RC input into pwm pin 6.
+#include <Servo.h>
+#include "libraries/Rotary/Rotary.cpp"
 
-  This program should run in two modes
+// pin configuration
+const int PIN_INPUT_INTERNAL_DRIVE_MODE = 8;
+const int PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD = 12;
+const int PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE = 13;
+const int PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER = 7;
+const int PIN_INPUT_INTERNAL_PROXIMITY_ECHO = 11;
+const int PIN_INPUT_INTERNAL_THROTTLE = A0;
+const int PIN_INPUT_INTERNAL_STEERING_DATA = 4;
+const int PIN_INPUT_INTERNAL_STEERING_CLOCK = 2;
+const int PIN_INPUT_REMOTE_FAILSAFE = 10;
+const int PIN_INPUT_REMOTE_OVERRIDE = 5;
+const int PIN_INPUT_REMOTE_THROTTLE = 9;
+const int PIN_INPUT_REMOTE_STEERING = 6;
+const int PIN_OUTPUT_THROTTLE = 3;
+// const int PIN_OUTPUT_STEERING = 0;
 
-  Mode 1 - Steering LEDs light up when rc remote steering wheel is centered, or turns left and right
-  Mode 2 - LEDS Disabled, No LEDs light up when steering wheel is turned
+// remote reciever sends PWM signals in the range ~1000 to ~2000
+const unsigned long PWM_RECEIVE_TIMEOUT = 100000;
+const int REMOTE_LOW_VALUE_MINIMUM = 950;
+const int REMOTE_LOW_VALUE_MAXIMUM = 1050;
+const int REMOTE_MIDDLE_VALUE_MINIMUM = 1450;
+const int REMOTE_MIDDLE_VALUE_MAXIMUM = 1550;
+const int REMOTE_HIGH_VALUE_MINIMUM = 1950;
+const int REMOTE_HIGH_VALUE_MAXIMUM = 2050;
+const int INTERNAL_THROTTLE_VALUE_MINIMUM = 250;
+const int INTERNAL_THROTTLE_VALUE_MAXIMUM = 750;
+const int INTERNAL_THROTTLE_MAXIMUM_OUTPUT = 50;
+const int STEERING_ANGLE_CENTRE = 90;
+const int STEERING_ANGLE_MINIMUM = 45;
+const int STEERING_ANGLE_MAXIMUM = 135;
+const int REMOTE_STEERING_CENTRE_MINIMUM = 86;
+const int REMOTE_STEERING_CENTRE_MAXIMUM = 94;
 
-  There is a Potentiometer on input A0 that should mimic the driving mode switch that is in the car.
+enum class RemoteStatus
+{
+  Disabled,
+  Enabled,
+  Failsafe
+};
 
-  If the Potentiometer value is less than or equal to 1000, this should invoke Mode 1 -
-  This mimics the driving mode switch being set to rc mode
+enum class ControlMode
+{
+  Internal,
+  Remote
+};
 
-  Mode 1 function
-  If the steering is neutral, where the RC input is PWM between 1400 and 1500 - The Yellow LED should light up
-  If the steering is full left, where the RC input is PWM less than 1400 - The Green LED should light up
-  If the steering is full right, where the RC input is PWM greater than 1500 - the Red LED should light up
+enum class ControlDevice
+{
+  Internal,
+  Remote,
+  None
+};
 
+enum class GearSelection
+{
+  Forward,
+  Reverse,
+  Neutral
+};
 
-  If the Potentiometer value is greater than 1000, this should invoke Mode 2 -
-  This mimics the driving mode switch in the car being set to child guided mode
+struct ControlState
+{
+  RemoteStatus RemoteStatus;
+  ControlMode RemoteControlMode;
+  ControlMode InternalControlMode;
+  ControlDevice ControlDevice;
+  GearSelection GearSelection;
+  int Proximity;
+  int SteeringAngle;
+  int Power;
 
-  Mode 2 function
-  No LEDS should turn on
-
-  NOTE: No Override mode is currently in place.
-*/
-
-/* ------------ Averaging -- */
-// Define the number of samples to keep track of. The higher the number, the
-// more the readings will be smoothed, but the slower the output will respond to
-// the input. Using a constant rather than a normal variable lets us use this
-// value to determine the size of the readings array.
-const int numReadings = 10;
-
-int readings[numReadings];      // the readings from the analog input
-int readIndex = 0;              // the index of the current reading
-int total = 0;                  // the running total
-int average = 0;                // the average
-
-int inputPin = A0;
-/* ----------- End of averaging ------- */
-
-
-int rcsteering;
-int rcthrottle;
-int rcdrivemode;
-
-int sensorValue = 0;
-
-int RedLedPin = 13;
-int YellowLedPin = 12;
-int GreenLedPin = 8;
-
-void setup() {     // put your setup code here, to run once:
-
-
-/* -------- averaging ------ */
-
-  // initialize serial communication with computer:
-  Serial.begin(9600);
-  // initialize all the readings to 0:
-  for (int thisReading = 0; thisReading < numReadings; thisReading++) {
-    readings[thisReading] = 0;
-  }
-
-/* -------- end of averaging ------- */
-
-
-  // Initialize RC inputs
-  // pinMode(3, INPUT); // RC Throttle input
-  pinMode(6, INPUT); // RC Steering input
-  pinMode(5, INPUT); // RC Driving Mode input
-
-  //Initialize Manual inputs
-  pinMode(A0, INPUT);
-
-  // Initialize LED Outputs
-  pinMode(RedLedPin, OUTPUT); // Red
-  pinMode(YellowLedPin, OUTPUT); // Yellow
-  pinMode(GreenLedPin, OUTPUT); // Green
-
-  // Initialize Servo output
-
-  Serial.begin(9600);
-  Serial.println("Initialise");
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
-
-/* ------------------------ */
-
-  // subtract the last reading:
-  total = total - readings[readIndex];
-  // read from the sensor:
-  readings[readIndex] = analogRead(inputPin);
-  // add the reading to the total:
-  total = total + readings[readIndex];
-  // advance to the next position in the array:
-  readIndex = readIndex + 1;
-
-  // if we're at the end of the array...
-  if (readIndex >= numReadings) {
-    // ...wrap around to the beginning:
-    readIndex = 0;
-  }
-
-  // calculate the average:
-  average = total / numReadings;
-  // send it to the computer as ASCII digits
-  Serial.println(average);
-  //delay(1);        // delay in between reads for stability
-
-/* ------------------------ */
-
-  
-  rcsteering = pulseIn(6, HIGH, 25000);
-  rcdrivemode = pulseIn(5, HIGH, 25000); // controlled by Potentiometer, but will be a switch in future.
-  //Serial.println(sensorValue);
-
-  if (average <= 1000) // Mode 1 - LEDS should light up when steering is turned right and left
+  void incrementSteeringAngle()
   {
-    if (rcsteering <= 1400)
-    {
-      digitalWrite(GreenLedPin, HIGH);
-      digitalWrite(YellowLedPin, LOW);
-      digitalWrite(RedLedPin, LOW);
-    };
+    setSteeringAngle(SteeringAngle + 1);
+  }
 
-    if (rcsteering >= 1400 && rcsteering <= 1500)
-    {
-      digitalWrite(YellowLedPin, HIGH);
-      digitalWrite(GreenLedPin, LOW);
-      digitalWrite(RedLedPin, LOW);
-      Serial.println("Yello");
-      Serial.println(sensorValue);
-    };
+  void decrementSteeringAngle()
+  {
+    setSteeringAngle(SteeringAngle - 1);
+  }
 
-    if (rcsteering >= 1500)
+  void setSteeringAngle(int angle)
+  {
+    if (ControlDevice == ControlDevice::None)
     {
-      digitalWrite(RedLedPin, HIGH);
-      digitalWrite(GreenLedPin, LOW);
-      digitalWrite(YellowLedPin, LOW);
-
+      SteeringAngle = STEERING_ANGLE_CENTRE;
+    }
+    
+    if (angle >= STEERING_ANGLE_MINIMUM && angle <= STEERING_ANGLE_MAXIMUM)
+    {
+      SteeringAngle = angle;
     }
   }
-  else // Mode 2 - No LEDS should light up
+} currentState;
+
+Servo powerServo;
+
+void setup() {
+  // configure input pins
+  pinMode(PIN_INPUT_INTERNAL_DRIVE_MODE, INPUT);
+  pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, INPUT_PULLUP);
+  pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, INPUT_PULLUP);
+  pinMode(PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER, OUTPUT);
+  pinMode(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, INPUT);
+  pinMode(PIN_INPUT_INTERNAL_THROTTLE, INPUT);
+//  pinMode(PIN_INPUT_INTERNAL_STEERING_DATA, INPUT_PULLUP);
+//  pinMode(PIN_INPUT_INTERNAL_STEERING_CLOCK, INPUT_PULLUP);
+  pinMode(PIN_INPUT_REMOTE_FAILSAFE, INPUT);
+  pinMode(PIN_INPUT_REMOTE_OVERRIDE, INPUT);
+  pinMode(PIN_INPUT_REMOTE_THROTTLE, INPUT);
+  pinMode(PIN_INPUT_REMOTE_STEERING, INPUT);
+
+  // configure output pins
+  powerServo.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
+  powerServo.write(90);
+
+  Serial.begin(9600);
+  Serial.println("Arduino Car Started. Brmmm Brmmm.");
+}
+
+void loop()
+{
+  refreshCurrentState();
+
+  if (currentState.GearSelection == GearSelection::Forward)
   {
-    digitalWrite(YellowLedPin, LOW);
-    digitalWrite(GreenLedPin, LOW);
-    digitalWrite(RedLedPin, LOW);
-  };
+    powerServo.write(map(currentState.Power, 0, 100, 90, 180));
+  }
+  else if (currentState.GearSelection == GearSelection::Reverse)
+  {
+    powerServo.write(map(currentState.Power, 0, 100, 90, 0));
+  }
+  else
+  {
+    powerServo.write(90);
+  }
+
+//  // update output
+//  Serial.println("");
+//
+//  Serial.print("Remote status: ");
+//  Serial.println(static_cast<int>(currentState.RemoteStatus));
+//
+//  Serial.print("Remote control mode: ");
+//  Serial.println(static_cast<int>(currentState.RemoteControlMode));
+//
+//  Serial.print("Internal control mode: ");
+//  Serial.println(static_cast<int>(currentState.InternalControlMode));
+//
+//  Serial.print("Control device: ");
+//  Serial.println(static_cast<int>(currentState.ControlDevice));
+//
+//  Serial.print("Proximity: ");
+//  Serial.println(currentState.Proximity);
+//
+//  Serial.print("Gear selection: ");
+//  Serial.println(static_cast<int>(currentState.GearSelection));
+//
+//  Serial.print("Power: ");
+//  Serial.println(currentState.Power);
+//
+//  Serial.print("Steering angle: ");
+//  Serial.println(currentState.SteeringAngle);
+//
+//  delay(2000);
+}
+
+void refreshCurrentState()
+{
+    // RC status and internal drive mode switch required to determine drive device
+    currentState.RemoteStatus = readRemoteStatus();
+    currentState.RemoteControlMode = readRemoteControlMode();
+    currentState.InternalControlMode = readInternalControlMode();
+  
+    // can now determine drive device
+    ControlDevice controlDevice = determineControlDevice();
+
+    // configure interrupts if switching in/out of internal control mode
+    if (controlDevice != currentState.ControlDevice && (currentState.ControlDevice == ControlDevice::Internal || controlDevice == ControlDevice::Internal))
+    {
+      toggleInternalSteering(controlDevice == ControlDevice::Internal);
+    }
+
+    currentState.ControlDevice = controlDevice;
+  
+    // once drive device is known drive inputs can be calculated
+    currentState.Proximity = readProximity();
+    currentState.GearSelection = readGearSelection();
+    currentState.Power = readThrottlePosition();
+  
+    // when drive device changes we need to enable/disable internal steering interrupts
+    toggleInternalSteering(currentState.ControlDevice == ControlDevice::Internal);
+    readSteeringAngle();
 }
