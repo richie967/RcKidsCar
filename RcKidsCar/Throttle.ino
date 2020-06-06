@@ -1,41 +1,29 @@
+const int PIN_INPUT_INTERNAL_THROTTLE = A0;
+const int INTERNAL_THROTTLE_VALUE_MINIMUM = 250;
+const int INTERNAL_THROTTLE_VALUE_MAXIMUM = 750;
+
+void configureInternalThrottle()
+{
+  pinMode(PIN_INPUT_INTERNAL_THROTTLE, INPUT);
+}
+
 int readThrottlePosition()
 {
-  int throttlePosition = 0;
-  int throttleMax = 100;
-
   if (currentState.ControlDevice == ControlDevice::None)
   {
     return 0;
   }
-  else if (currentState.ControlDevice == ControlDevice::Internal)
-  {
-    throttleMax = INTERNAL_THROTTLE_MAXIMUM_OUTPUT;
-    throttlePosition = readThrottlePositionInternalRaw();
-  }
-  else
-  {
-    throttlePosition = readThrottlePositionRemoteRaw();
-  }
 
-  if (throttlePosition < 0)
-  {
-    return 0;
-  }
-  else if (throttlePosition > throttleMax)
-  {
-    return throttleMax;
-  }
-
-  return throttlePosition;
+  return (currentState.ControlDevice == ControlDevice::Internal) ? readThrottlePositionInternal() : readThrottlePositionRemote();
 }
 
-int readThrottlePositionInternalRaw()
+int readThrottlePositionInternal()
 {
   int throttleValue = analogRead(PIN_INPUT_INTERNAL_THROTTLE);
   return map(throttleValue, INTERNAL_THROTTLE_VALUE_MINIMUM, INTERNAL_THROTTLE_VALUE_MAXIMUM, 0, INTERNAL_THROTTLE_MAXIMUM_OUTPUT);
 }
 
-int readThrottlePositionRemoteRaw()
+int readThrottlePositionRemote()
 {
   int throttleValue = pulseIn(PIN_INPUT_REMOTE_THROTTLE, HIGH);
 

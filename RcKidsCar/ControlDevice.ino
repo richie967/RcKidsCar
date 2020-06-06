@@ -1,7 +1,16 @@
+const int PIN_INPUT_INTERNAL_CONTROL_MODE = 8;
+const int PIN_INPUT_REMOTE_CONTROL_MODE = 5;
+
+void configureControlMode()
+{
+  pinMode(PIN_INPUT_INTERNAL_CONTROL_MODE, INPUT);
+  pinMode(PIN_INPUT_REMOTE_CONTROL_MODE, INPUT);
+}
+
 ControlMode readRemoteControlMode()
 {
   // PWM signal from remote sends one of three values 0 (remote not connected), ~1000 (LOW, switch off), ~2000 (HIGH, switch on)
-  int pinValue = pulseIn(PIN_INPUT_REMOTE_OVERRIDE, HIGH, PWM_RECEIVE_TIMEOUT);
+  int pinValue = pulseIn(PIN_INPUT_REMOTE_CONTROL_MODE, HIGH, PWM_RECEIVE_TIMEOUT);
   
   if (pinValue >= REMOTE_HIGH_VALUE_MINIMUM && pinValue <= REMOTE_HIGH_VALUE_MAXIMUM)
   {
@@ -13,7 +22,7 @@ ControlMode readRemoteControlMode()
 
 ControlMode readInternalControlMode()
 {
-  int pinValue = digitalRead(PIN_INPUT_INTERNAL_DRIVE_MODE);
+  int pinValue = digitalRead(PIN_INPUT_INTERNAL_CONTROL_MODE);
   return static_cast<ControlMode>(pinValue);
 }
 

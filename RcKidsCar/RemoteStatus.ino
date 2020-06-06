@@ -1,3 +1,10 @@
+const int PIN_INPUT_REMOTE_FAILSAFE = 10;
+
+void configureRemote()
+{
+  pinMode(PIN_INPUT_REMOTE_FAILSAFE, INPUT);
+}
+
 RemoteStatus readRemoteStatus()
 {
   // when remote receiver started without remote connected remote receiver outputs 0, otherwise LOW, MIDDLE, HIGH values as described in constants

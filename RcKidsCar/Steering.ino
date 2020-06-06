@@ -1,4 +1,13 @@
+const int PIN_INPUT_INTERNAL_STEERING_DATA = 4;
+const int PIN_INPUT_INTERNAL_STEERING_CLOCK = 2;
+const int PIN_INPUT_REMOTE_STEERING = 6;
+
 Rotary internalSteering = Rotary(PIN_INPUT_INTERNAL_STEERING_DATA, PIN_INPUT_INTERNAL_STEERING_CLOCK);
+
+void configureSteering()
+{
+  pinMode(PIN_INPUT_REMOTE_STEERING, INPUT);
+}
 
 void toggleInternalSteering(bool enabled)
 {
@@ -20,18 +29,17 @@ void toggleInternalSteering(bool enabled)
   }
 }
 
-void readSteeringAngle()
+int readSteeringAngle()
 {
   if (currentState.ControlDevice == ControlDevice::None)
   {
-    currentState.setSteeringAngle(STEERING_ANGLE_CENTRE);
+    return STEERING_ANGLE_CENTRE;
   }
   else if (currentState.ControlDevice == ControlDevice::Remote)
   {
-    int angle = readSteeringAngleRemote();
-    currentState.setSteeringAngle(angle);
+    return readSteeringAngleRemote();
   }
-  // internal steering inputs handled by interrupts
+  // else: internal steering inputs handled by interrupts so no need to poll
 }
 
 void internalSteeringRotate()

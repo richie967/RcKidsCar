@@ -1,3 +1,12 @@
+const int PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD = 12;
+const int PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE = 13;
+
+void configureInternalGearSelection()
+{
+  pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, INPUT_PULLUP);
+  pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, INPUT_PULLUP);
+}
+
 GearSelection readGearSelection()
 {
   if (currentState.ControlDevice == ControlDevice::None)

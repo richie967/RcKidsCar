@@ -2,37 +2,23 @@
 #include "libraries/Rotary/Rotary.cpp"
 
 // pin configuration
-const int PIN_INPUT_INTERNAL_DRIVE_MODE = 8;
-const int PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD = 12;
-const int PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE = 13;
-const int PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER = 7;
-const int PIN_INPUT_INTERNAL_PROXIMITY_ECHO = 11;
-const int PIN_INPUT_INTERNAL_THROTTLE = A0;
-const int PIN_INPUT_INTERNAL_STEERING_DATA = 4;
-const int PIN_INPUT_INTERNAL_STEERING_CLOCK = 2;
-const int PIN_INPUT_REMOTE_FAILSAFE = 10;
-const int PIN_INPUT_REMOTE_OVERRIDE = 5;
 const int PIN_INPUT_REMOTE_THROTTLE = 9;
-const int PIN_INPUT_REMOTE_STEERING = 6;
 const int PIN_OUTPUT_THROTTLE = 3;
 // const int PIN_OUTPUT_STEERING = 0;
 
+// input signal configuration
 // remote reciever sends PWM signals in the range ~1000 to ~2000
-const unsigned long PWM_RECEIVE_TIMEOUT = 100000;
+const int PWM_RECEIVE_TIMEOUT = 100000;
 const int REMOTE_LOW_VALUE_MINIMUM = 950;
 const int REMOTE_LOW_VALUE_MAXIMUM = 1050;
 const int REMOTE_MIDDLE_VALUE_MINIMUM = 1450;
 const int REMOTE_MIDDLE_VALUE_MAXIMUM = 1550;
 const int REMOTE_HIGH_VALUE_MINIMUM = 1950;
 const int REMOTE_HIGH_VALUE_MAXIMUM = 2050;
-const int INTERNAL_THROTTLE_VALUE_MINIMUM = 250;
-const int INTERNAL_THROTTLE_VALUE_MAXIMUM = 750;
-const int INTERNAL_THROTTLE_MAXIMUM_OUTPUT = 50;
 const int STEERING_ANGLE_CENTRE = 90;
 const int STEERING_ANGLE_MINIMUM = 45;
 const int STEERING_ANGLE_MAXIMUM = 135;
-const int REMOTE_STEERING_CENTRE_MINIMUM = 86;
-const int REMOTE_STEERING_CENTRE_MAXIMUM = 94;
+const int INTERNAL_THROTTLE_MAXIMUM_OUTPUT = 50;
 
 enum class RemoteStatus
 {
@@ -70,7 +56,30 @@ struct ControlState
   GearSelection GearSelection;
   int Proximity;
   int SteeringAngle;
-  int Power;
+  int Throttle;
+
+  void setThrottle(int throttle)
+  {
+    // ensure throttle never exceeds max/min values
+    int throttleMax = 100;
+    if (ControlDevice == ControlDevice::Internal)
+    {
+      throttleMax = INTERNAL_THROTTLE_MAXIMUM_OUTPUT;
+    }
+    
+    if (throttle < 0)
+    {
+      Throttle = 0;
+    }
+    else if (throttle > throttleMax)
+    {
+      Throttle = throttleMax;
+    }
+    else
+    {
+      Throttle = throttle;
+    }
+  }
 
   void incrementSteeringAngle()
   {
@@ -99,20 +108,17 @@ struct ControlState
 Servo powerServo;
 
 void setup() {
-  // configure input pins
-  pinMode(PIN_INPUT_INTERNAL_DRIVE_MODE, INPUT);
-  pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, INPUT_PULLUP);
-  pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, INPUT_PULLUP);
-  pinMode(PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER, OUTPUT);
-  pinMode(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, INPUT);
-  pinMode(PIN_INPUT_INTERNAL_THROTTLE, INPUT);
-//  pinMode(PIN_INPUT_INTERNAL_STEERING_DATA, INPUT_PULLUP);
-//  pinMode(PIN_INPUT_INTERNAL_STEERING_CLOCK, INPUT_PULLUP);
-  pinMode(PIN_INPUT_REMOTE_FAILSAFE, INPUT);
-  pinMode(PIN_INPUT_REMOTE_OVERRIDE, INPUT);
-  pinMode(PIN_INPUT_REMOTE_THROTTLE, INPUT);
-  pinMode(PIN_INPUT_REMOTE_STEERING, INPUT);
+  // configure input
+  configureControlMode();
+  configureInternalGearSelection();
+  configureInternalProximity();
+  configureInternalThrottle();
+  configureRemote();
+  configureSteering();
 
+  // throttle pin provides both remote throttle and remote gear selection
+  pinMode(PIN_INPUT_REMOTE_THROTTLE, INPUT);
+  
   // configure output pins
   powerServo.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
   powerServo.write(90);
@@ -127,11 +133,11 @@ void loop()
 
   if (currentState.GearSelection == GearSelection::Forward)
   {
-    powerServo.write(map(currentState.Power, 0, 100, 90, 180));
+    powerServo.write(map(currentState.Throttle, 0, 100, 90, 180));
   }
   else if (currentState.GearSelection == GearSelection::Reverse)
   {
-    powerServo.write(map(currentState.Power, 0, 100, 90, 0));
+    powerServo.write(map(currentState.Throttle, 0, 100, 90, 0));
   }
   else
   {
@@ -186,12 +192,15 @@ void refreshCurrentState()
 
     currentState.ControlDevice = controlDevice;
   
-    // once drive device is known drive inputs can be calculated
+    // once drive device is known drive inputs can be evaluated
     currentState.Proximity = readProximity();
     currentState.GearSelection = readGearSelection();
-    currentState.Power = readThrottlePosition();
-  
-    // when drive device changes we need to enable/disable internal steering interrupts
-    toggleInternalSteering(currentState.ControlDevice == ControlDevice::Internal);
-    readSteeringAngle();
+
+    int throttle = readThrottlePosition();
+    currentState.setThrottle(throttle);
+
+    if (currentState.ControlDevice == ControlDevice::Internal)
+    {
+      currentState.setSteeringAngle(readSteeringAngle());
+    }
 }
