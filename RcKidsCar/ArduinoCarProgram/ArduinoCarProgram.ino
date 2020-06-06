@@ -69,6 +69,8 @@ struct ControlState
 int internalSteeringDataLast;
 Servo powerServo;
 
+
+
 void setup() {
   // configure input pins
   pinMode(PIN_INPUT_INTERNAL_DRIVE_MODE, INPUT);
