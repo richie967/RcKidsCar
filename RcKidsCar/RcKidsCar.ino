@@ -1,9 +1,9 @@
 #include <Servo.h>
 #include "libraries/Rotary/Rotary.cpp"
+#include "libraries/PinChangeInt/PinChangeInt.h"
 
 // pin configuration
 const int PIN_INPUT_REMOTE_THROTTLE = 9;
-const int PIN_OUTPUT_THROTTLE = 3;
 // const int PIN_OUTPUT_STEERING = 0;
 
 // input signal configuration
@@ -20,49 +20,96 @@ const int STEERING_ANGLE_MINIMUM = 45;
 const int STEERING_ANGLE_MAXIMUM = 135;
 const int INTERNAL_THROTTLE_MAXIMUM_OUTPUT = 50;
 
-enum class RemoteStatus
+namespace Enums
 {
-  Disabled,
-  Enabled,
-  Failsafe
-};
-
-enum class ControlMode
-{
-  Internal,
-  Remote
-};
-
-enum class ControlDevice
-{
-  Internal,
-  Remote,
-  None
-};
-
-enum class GearSelection
-{
-  Forward,
-  Reverse,
-  Neutral
-};
+  enum class RemoteStatus
+  {
+    Disabled,
+    Enabled,
+    Failsafe
+  };
+  
+  enum class ControlMode
+  {
+    Internal,
+    Remote
+  };
+  
+  enum class ControlDevice
+  {
+    Internal,
+    Remote,
+    None
+  };
+  
+  enum class GearSelection
+  {
+    Forward,
+    Reverse,
+    Neutral
+  };
+}
 
 struct ControlState
 {
-  RemoteStatus RemoteStatus;
-  ControlMode RemoteControlMode;
-  ControlMode InternalControlMode;
-  ControlDevice ControlDevice;
-  GearSelection GearSelection;
+  (* controlDeviceChanged)(Enums::ControlDevice, Enums::ControlDevice);
+  
+  // default to in car control
+  Enums::RemoteStatus RemoteStatus = Enums::RemoteStatus::Disabled;
+  Enums::ControlMode RemoteControlMode = Enums::ControlMode::Internal;  
+  Enums::ControlMode InternalControlMode = Enums::ControlMode::Internal;
+  Enums::ControlDevice ControlDevice = Enums::ControlDevice::Internal;
+  Enums::GearSelection GearSelection = Enums::GearSelection::Neutral;
   int Proximity;
   int SteeringAngle;
   int Throttle;
+
+  void setRemoteStatus(Enums::RemoteStatus status)
+  {
+    RemoteStatus = status;
+    determineControlDevice();
+  }
+
+  void setRemoteControlMode(Enums::ControlMode mode)
+  {
+    RemoteControlMode = mode;
+    determineControlDevice();
+  }
+
+  void setInternalControlMode(Enums::ControlMode mode)
+  {
+    InternalControlMode = mode;
+    determineControlDevice();
+  }
+
+  void determineControlDevice()
+  {
+    Enums::ControlDevice oldDevice = ControlDevice;
+    
+    switch (RemoteStatus)
+    {
+      case Enums::RemoteStatus::Failsafe:
+        ControlDevice = Enums::ControlDevice::None;
+        break;
+      case Enums::RemoteStatus::Enabled:
+        ControlDevice = (RemoteControlMode == Enums::ControlMode::Remote) ? Enums::ControlDevice::Remote : Enums::ControlDevice::Internal;
+        break;
+      case Enums::RemoteStatus::Disabled:
+        ControlDevice = (InternalControlMode == Enums::ControlMode::Internal) ? Enums::ControlDevice::Internal : Enums::ControlDevice::None;
+        break;
+    }
+
+    if (ControlDevice != oldDevice)
+    {
+      controlDeviceChanged(oldDevice, ControlDevice);
+    }
+  }
 
   void setThrottle(int throttle)
   {
     // ensure throttle never exceeds max/min values
     int throttleMax = 100;
-    if (ControlDevice == ControlDevice::Internal)
+    if (ControlDevice == Enums::ControlDevice::Internal)
     {
       throttleMax = INTERNAL_THROTTLE_MAXIMUM_OUTPUT;
     }
@@ -93,7 +140,7 @@ struct ControlState
 
   void setSteeringAngle(int angle)
   {
-    if (ControlDevice == ControlDevice::None)
+    if (ControlDevice == Enums::ControlDevice::None)
     {
       SteeringAngle = STEERING_ANGLE_CENTRE;
     }
@@ -105,102 +152,51 @@ struct ControlState
   }
 } currentState;
 
-Servo powerServo;
-
 void setup() {
-  // configure input
-  configureControlMode();
-  configureInternalGearSelection();
-  configureInternalProximity();
-  configureInternalThrottle();
-  configureRemote();
-  configureSteering();
-
-  // throttle pin provides both remote throttle and remote gear selection
-  pinMode(PIN_INPUT_REMOTE_THROTTLE, INPUT);
+  currentState.controlDeviceChanged = controlDeviceChanged;
   
-  // configure output pins
-  powerServo.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
-  powerServo.write(90);
-
-  Serial.begin(9600);
-  Serial.println("Arduino Car Started. Brmmm Brmmm.");
+  // configure input
+  configureRemote();
+  configureControlModeInternal();
+  configureGearSelectionInternal();
+  configureProximityInternal();
+  configureThrottleInternal();
+  configureOutput();
 }
 
 void loop()
 {
   refreshCurrentState();
-
-  if (currentState.GearSelection == GearSelection::Forward)
-  {
-    powerServo.write(map(currentState.Throttle, 0, 100, 90, 180));
-  }
-  else if (currentState.GearSelection == GearSelection::Reverse)
-  {
-    powerServo.write(map(currentState.Throttle, 0, 100, 90, 0));
-  }
-  else
-  {
-    powerServo.write(90);
-  }
-
-//  // update output
-//  Serial.println("");
-//
-//  Serial.print("Remote status: ");
-//  Serial.println(static_cast<int>(currentState.RemoteStatus));
-//
-//  Serial.print("Remote control mode: ");
-//  Serial.println(static_cast<int>(currentState.RemoteControlMode));
-//
-//  Serial.print("Internal control mode: ");
-//  Serial.println(static_cast<int>(currentState.InternalControlMode));
-//
-//  Serial.print("Control device: ");
-//  Serial.println(static_cast<int>(currentState.ControlDevice));
-//
-//  Serial.print("Proximity: ");
-//  Serial.println(currentState.Proximity);
-//
-//  Serial.print("Gear selection: ");
-//  Serial.println(static_cast<int>(currentState.GearSelection));
-//
-//  Serial.print("Power: ");
-//  Serial.println(currentState.Power);
-//
-//  Serial.print("Steering angle: ");
-//  Serial.println(currentState.SteeringAngle);
-//
-//  delay(2000);
+  refreshOutput();
 }
 
 void refreshCurrentState()
 {
-    // RC status and internal drive mode switch required to determine drive device
-    currentState.RemoteStatus = readRemoteStatus();
-    currentState.RemoteControlMode = readRemoteControlMode();
-    currentState.InternalControlMode = readInternalControlMode();
-  
-    // can now determine drive device
-    ControlDevice controlDevice = determineControlDevice();
+  // all of the following properties of the state are updated as and when they occur by interrupts
+  // currentState.RemoteStatus
+  // currentState.RemoteControlMode
+  // currentState.InternalControlMode
+  // currentState.GearSelection
+  // currentState.SteeringAngle
 
-    // configure interrupts if switching in/out of internal control mode
-    if (controlDevice != currentState.ControlDevice && (currentState.ControlDevice == ControlDevice::Internal || controlDevice == ControlDevice::Internal))
-    {
-      toggleInternalSteering(controlDevice == ControlDevice::Internal);
-    }
+  // currentState.ControlDevice is updated automatically when relevant properties of the state change
 
-    currentState.ControlDevice = controlDevice;
-  
-    // once drive device is known drive inputs can be evaluated
-    currentState.Proximity = readProximity();
-    currentState.GearSelection = readGearSelection();
+  // update the remaining inputs
+  refreshProximity();
 
-    int throttle = readThrottlePosition();
-    currentState.setThrottle(throttle);
+  if (currentState.ControlDevice == Enums::ControlDevice::Internal)
+  {
+    refreshThrottleInternal();
+  }
+}
 
-    if (currentState.ControlDevice == ControlDevice::Internal)
-    {
-      currentState.setSteeringAngle(readSteeringAngle());
-    }
+void controlDeviceChanged(Enums::ControlDevice oldDevice, Enums::ControlDevice newDevice)
+{
+  // changing to or from internal control device we must enable/disabled internal input interrupts
+  if (oldDevice == Enums::ControlDevice::Internal || newDevice == Enums::ControlDevice::Internal)
+  {
+    bool enabled = newDevice == Enums::ControlDevice::Internal;
+    toggleGearSelectionInternal(enabled);
+    toggleSteeringInternal(enabled);
+  }
 }

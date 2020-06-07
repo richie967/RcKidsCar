@@ -1,13 +1,13 @@
 const int PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER = 7;
 const int PIN_INPUT_INTERNAL_PROXIMITY_ECHO = 11;
 
-void configureInternalProximity()
+void configureProximityInternal()
 {
   pinMode(PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER, OUTPUT);
   pinMode(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, INPUT);
 }
 
-int readProximity()
+void refreshProximity()
 {
   digitalWrite(PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER, LOW);
   delayMicroseconds(2);
@@ -17,5 +17,5 @@ int readProximity()
 
   int duration = pulseIn(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, HIGH);
 
-  return (duration / 2) * 0.0343;
+  currentState.Proximity = (duration / 2) * 0.0343;
 }

@@ -1,56 +1,42 @@
 const int PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD = 12;
 const int PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE = 13;
 
-void configureInternalGearSelection()
+void configureGearSelectionInternal()
 {
   pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, INPUT_PULLUP);
   pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, INPUT_PULLUP);
 }
 
-GearSelection readGearSelection()
+void toggleGearSelectionInternal(bool enabled)
 {
-  if (currentState.ControlDevice == ControlDevice::None)
+  if (enabled)
   {
-    return GearSelection::Neutral;
+    PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, refreshGearSelectionInternal, CHANGE);
+    PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, refreshGearSelectionInternal, CHANGE);
+    refreshGearSelectionInternal();
   }
-  
-  if (currentState.ControlDevice == ControlDevice::Internal)
+  else
   {
-    return readGearSelectionInternal();
+    PCintPort::detachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD);
+    PCintPort::detachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE);
   }
-  
-  return readGearSelectionRemote();
 }
 
-GearSelection readGearSelectionInternal()
+void refreshGearSelectionInternal()
 {
   int forwardPinValue = !digitalRead(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD);
   int reversePinValue = !digitalRead(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE);
 
   if (forwardPinValue)
   {
-    return GearSelection::Forward;
+    currentState.GearSelection = Enums::GearSelection::Forward;
   }
   else if (reversePinValue)
   {
-    return GearSelection::Reverse;
+    currentState.GearSelection = Enums::GearSelection::Reverse;
   }
-
-  return GearSelection::Neutral;
-}
-
-GearSelection readGearSelectionRemote()
-{
-  int throttleValue = pulseIn(PIN_INPUT_REMOTE_THROTTLE, HIGH);
-
-  if (throttleValue > REMOTE_MIDDLE_VALUE_MAXIMUM)
+  else
   {
-    return GearSelection::Forward;
+    currentState.GearSelection = Enums::GearSelection::Neutral;
   }
-  else if (throttleValue < REMOTE_MIDDLE_VALUE_MINIMUM)
-  {
-    return GearSelection::Reverse;
-  }
-
-  return GearSelection::Neutral;
 }
