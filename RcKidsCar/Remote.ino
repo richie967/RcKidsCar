@@ -1,12 +1,13 @@
 const int PIN_INPUT_REMOTE = 6;
 const int PPM_PULSE_MAX_LENGTH = 3000;
 
-unsigned long channel[6], timer[7];
+// currently configured to read 4 channels of input
+unsigned long channelValues[4], timer[5];
 int pulse;
 
 // define the ppm channel handlers, position in the array = offset channel number
-// e.g. position 0 is channel 1, position 1 is channel 2, etc.
-void (* channelHandlers [6])(int) = { handleRemoteSteering, handleRemoteThrottle, handleRemoteControlMode, handleRemoteStatus, NULL, NULL };
+// e.g. position 0 = channel 1, position 1 = channel 2, etc.
+void (* channelHandlers [4])(int) = { handleRemoteSteering, handleRemoteThrottle, handleRemoteControlMode, handleRemoteStatus };
 
 void configureRemote()
 {
@@ -26,10 +27,11 @@ void receiveRemotePulse()
   }
 
   // store the channel value as the difference between the current pulse and the last
-  channel[pulse] = timer[pulse] - timer[pulse - 1];
+  int channelNumber = pulse - 1;
+  channelValues[channelNumber] = timer[pulse] - timer[pulse - 1];
 
   // if there is a synchronisation issue (we're reading a long interval when we shouldn't), reset to start reading pulse 1 on the next pulse
-  if (channel[pulse] > PPM_PULSE_MAX_LENGTH)
+  if (channelValues[channelNumber] > PPM_PULSE_MAX_LENGTH)
   {
     timer[0] = timer[pulse];
     pulse = 1;
@@ -37,9 +39,9 @@ void receiveRemotePulse()
   }
     
   // now call the handler for the specific channel if we have one
-  if (channelHandlers[pulse])
+  if (channelHandlers[channelNumber])
   {
-    channelHandlers[pulse](channel[pulse - 1]);
+    channelHandlers[channelNumber](channelValues[channelNumber]);
   }
 
   pulse++;
