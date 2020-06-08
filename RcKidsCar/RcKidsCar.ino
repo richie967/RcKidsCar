@@ -2,13 +2,8 @@
 #include "libraries/Rotary/Rotary.cpp"
 #include "libraries/PinChangeInt/PinChangeInt.h"
 
-// pin configuration
-const int PIN_INPUT_REMOTE_THROTTLE = 9;
-// const int PIN_OUTPUT_STEERING = 0;
-
 // input signal configuration
 // remote reciever sends PWM signals in the range ~1000 to ~2000
-const int PWM_RECEIVE_TIMEOUT = 100000;
 const int REMOTE_LOW_VALUE_MINIMUM = 950;
 const int REMOTE_LOW_VALUE_MAXIMUM = 1050;
 const int REMOTE_MIDDLE_VALUE_MINIMUM = 1450;

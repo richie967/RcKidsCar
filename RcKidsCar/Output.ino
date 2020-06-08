@@ -1,10 +1,10 @@
-const int PIN_OUTPUT_THROTTLE = 3;
+const int PIN_OUTPUT_STEERING = 10;
+const int PIN_OUTPUT_THROTTLE = 11;
 
 Servo powerServo;
 
 void configureOutput()
 {
-  pinMode(PIN_INPUT_REMOTE_THROTTLE, INPUT);
   powerServo.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
 
   Serial.begin(9600);

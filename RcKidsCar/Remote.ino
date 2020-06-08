@@ -1,4 +1,4 @@
-const int PIN_INPUT_REMOTE = 10;
+const int PIN_INPUT_REMOTE = 6;
 const int PPM_PULSE_MAX_LENGTH = 3000;
 
 unsigned long channel[6], timer[7];
