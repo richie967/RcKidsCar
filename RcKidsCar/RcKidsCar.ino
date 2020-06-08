@@ -148,6 +148,8 @@ struct ControlState
 } currentState;
 
 void setup() {
+  cli(); // disable interrupts
+  
   currentState.controlDeviceChanged = controlDeviceChanged;
   
   // configure input
@@ -157,6 +159,8 @@ void setup() {
   configureProximityInternal();
   configureThrottleInternal();
   configureOutput();
+
+  sei(); // enable interrupts
 }
 
 void loop()
@@ -177,8 +181,6 @@ void refreshCurrentState()
   // currentState.ControlDevice is updated automatically when relevant properties of the state change
 
   // update the remaining inputs
-  refreshProximity();
-
   if (currentState.ControlDevice == Enums::ControlDevice::Internal)
   {
     refreshThrottleInternal();
