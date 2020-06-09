@@ -1,5 +1,3 @@
-#include <Servo.h>
-#include "libraries/Rotary/Rotary.cpp"
 #include "libraries/PinChangeInt/PinChangeInt.h"
 
 // input signal configuration

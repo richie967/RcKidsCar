@@ -1,3 +1,5 @@
+#include "libraries/Rotary/Rotary.cpp"
+
 const int PIN_INPUT_INTERNAL_STEERING_DATA = 2;
 const int PIN_INPUT_INTERNAL_STEERING_CLOCK = 3;
 
