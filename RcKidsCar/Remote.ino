@@ -2,19 +2,19 @@ const int PIN_INPUT_REMOTE = 6;
 const int PPM_PULSE_MAX_LENGTH = 3000;
 
 // currently configured to read 4 channels of input
-unsigned long channelValues[4], timer[5];
-int pulse;
+volatile unsigned long channelValues[4], timer[5];
+volatile int pulse;
 
 // define the ppm channel handlers, position in the array = offset channel number
 // e.g. position 0 = channel 1, position 1 = channel 2, etc.
-void (* channelHandlers [4])(int) = { handleRemoteSteering, handleRemoteThrottle, handleRemoteControlMode, handleRemoteStatus };
+volatile void (* channelHandlers [4])(int) = { handleRemoteSteering, handleRemoteThrottle, handleRemoteControlMode, handleRemoteStatus };
 
-void configureRemote()
+void configureRemoteControl()
 {
-  PCintPort::attachInterrupt(PIN_INPUT_REMOTE, receiveRemotePulse, RISING);
+  PCintPort::attachInterrupt(PIN_INPUT_REMOTE, remotePulseReceived, RISING);
 }
 
-void receiveRemotePulse()
+void remotePulseReceived()
 {
   // read the time in microseconds for the current pulse
   timer[pulse] = micros();
@@ -40,9 +40,7 @@ void receiveRemotePulse()
     
   // now call the handler for the specific channel if we have one
   if (channelHandlers[channelNumber])
-  {
     channelHandlers[channelNumber](channelValues[channelNumber]);
-  }
 
   pulse++;
 }
@@ -50,34 +48,25 @@ void receiveRemotePulse()
 void handleRemoteStatus(int remoteStatusValue)
 {
   if (remoteStatusValue == 0)
-  {
     currentState.setRemoteStatus(Enums::RemoteStatus::Disabled);
-  }
   else if (remoteStatusValue >= REMOTE_LOW_VALUE_MINIMUM && remoteStatusValue <= REMOTE_LOW_VALUE_MAXIMUM)
-  {
     currentState.setRemoteStatus(Enums::RemoteStatus::Failsafe);
-  }
   else
-  {
     currentState.setRemoteStatus(Enums::RemoteStatus::Enabled);
-  }
 }
 
 void handleRemoteSteering(int steeringValue)
 {
   // ignore if remote is not the control device
   if (currentState.ControlDevice != Enums::ControlDevice::Remote)
-  {
     return;
-  }
+
+  int steeringAngle = STEERING_ANGLE_CENTRE;
   
   // ignore jitter on the pulse value when no steering angle is applied
-  if (steeringValue >= REMOTE_MIDDLE_VALUE_MINIMUM && steeringValue <= REMOTE_MIDDLE_VALUE_MAXIMUM)
-  {
-    return STEERING_ANGLE_CENTRE;
-  }
-  
-  int steeringAngle = map(steeringValue, REMOTE_LOW_VALUE_MAXIMUM, REMOTE_HIGH_VALUE_MINIMUM, STEERING_ANGLE_MINIMUM, STEERING_ANGLE_MAXIMUM);
+  if (steeringValue < REMOTE_MIDDLE_VALUE_MINIMUM || steeringValue > REMOTE_MIDDLE_VALUE_MAXIMUM)
+    steeringAngle = map(steeringValue, REMOTE_LOW_VALUE_MAXIMUM, REMOTE_HIGH_VALUE_MINIMUM, STEERING_ANGLE_MINIMUM, STEERING_ANGLE_MAXIMUM);
+    
   currentState.setSteeringAngle(steeringAngle);
 }
 
@@ -85,9 +74,7 @@ void handleRemoteThrottle(int throttleValue)
 {
   // ignore if remote is not the control device
   if (currentState.ControlDevice != Enums::ControlDevice::Remote)
-  {
     return;
-  }
   
   if (throttleValue <= REMOTE_MIDDLE_VALUE_MINIMUM)
   {
@@ -112,11 +99,9 @@ void handleRemoteThrottle(int throttleValue)
 
 void handleRemoteControlMode(int controlModeValue)
 {
-  if (controlModeValue >= REMOTE_HIGH_VALUE_MINIMUM && controlModeValue <= REMOTE_HIGH_VALUE_MAXIMUM)
-  {
-    currentState.setRemoteControlMode(Enums::ControlMode::Remote);
-    return;
-  }
-
-  currentState.setRemoteControlMode(Enums::ControlMode::Internal);
+  Enums::ControlMode controlMode = controlModeValue >= REMOTE_HIGH_VALUE_MINIMUM
+    ? Enums::ControlMode::Remote
+    : Enums::ControlMode::Internal;
+  
+  currentState.setRemoteControlMode(controlMode);
 }

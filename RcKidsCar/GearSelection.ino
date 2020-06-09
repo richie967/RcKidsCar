@@ -4,19 +4,21 @@
 const int PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD = 12;
 const int PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE = 13;
 
-void configureGearSelectionInternal()
+void configureGearSelection()
 {
   pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, INPUT_PULLUP);
   pinMode(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, INPUT_PULLUP);
+
+  toggleGearSelection(true);
 }
 
-void toggleGearSelectionInternal(bool enabled)
+void toggleGearSelection(bool enabled)
 {
   if (enabled)
   {
-    PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, refreshGearSelectionInternal, CHANGE);
-    PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, refreshGearSelectionInternal, CHANGE);
-    refreshGearSelectionInternal();
+    PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD, gearSelectionChanged, CHANGE);
+    PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE, gearSelectionChanged, CHANGE);
+    gearSelectionChanged();
   }
   else
   {
@@ -25,21 +27,15 @@ void toggleGearSelectionInternal(bool enabled)
   }
 }
 
-void refreshGearSelectionInternal()
+void gearSelectionChanged()
 {
   int forwardPinValue = !digitalRead(PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD);
   int reversePinValue = !digitalRead(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE);
 
   if (forwardPinValue)
-  {
     currentState.GearSelection = Enums::GearSelection::Forward;
-  }
   else if (reversePinValue)
-  {
     currentState.GearSelection = Enums::GearSelection::Reverse;
-  }
   else
-  {
     currentState.GearSelection = Enums::GearSelection::Neutral;
-  }
 }

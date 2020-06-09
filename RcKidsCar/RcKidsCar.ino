@@ -94,7 +94,7 @@ struct ControlState
         break;
     }
 
-    if (ControlDevice != oldDevice)
+    if (ControlDevice != oldDevice && controlDeviceChanged)
     {
       controlDeviceChanged(oldDevice, ControlDevice);
     }
@@ -148,43 +148,35 @@ struct ControlState
 } currentState;
 
 void setup() {
-  cli(); // disable interrupts
-  
+  // disable interrupts during setup
+  noInterrupts();
+
+  // hook up handler for when the control device changes
   currentState.controlDeviceChanged = controlDeviceChanged;
   
-  // configure input
-  configureRemote();
-  configureControlModeInternal();
-  configureGearSelectionInternal();
-  configureProximityInternal();
-  configureThrottleInternal();
+  // configure inputs, default state is internal controls enabled
+  configureControlMode();
+  configureGearSelection();
+  configureSteering();
+  configureProximity();
+
+  // configure remote inputs
+  configureRemoteControl();
+
+  // configure output devices
   configureOutput();
 
-  sei(); // enable interrupts
+  // reenable interrupts
+  interrupts();
 }
 
 void loop()
 {
-  refreshCurrentState();
+  // poll non-interrupt devices
+  pollThrottle();
+  
+  // update output devices
   refreshOutput();
-}
-
-void refreshCurrentState()
-{
-  // all of the following properties of the state are updated as and when they occur by interrupts
-  // currentState.RemoteStatus
-  // currentState.RemoteControlMode
-  // currentState.InternalControlMode
-  // currentState.GearSelection
-  // currentState.SteeringAngle
-
-  // currentState.ControlDevice is updated automatically when relevant properties of the state change
-
-  // update the remaining inputs
-  if (currentState.ControlDevice == Enums::ControlDevice::Internal)
-  {
-    refreshThrottleInternal();
-  }
 }
 
 void controlDeviceChanged(Enums::ControlDevice oldDevice, Enums::ControlDevice newDevice)
@@ -192,8 +184,13 @@ void controlDeviceChanged(Enums::ControlDevice oldDevice, Enums::ControlDevice n
   // changing to or from internal control device we must enable/disabled internal input interrupts
   if (oldDevice == Enums::ControlDevice::Internal || newDevice == Enums::ControlDevice::Internal)
   {
-    bool enabled = newDevice == Enums::ControlDevice::Internal;
-    toggleGearSelectionInternal(enabled);
-    toggleSteeringInternal(enabled);
+    bool enabled = (newDevice == Enums::ControlDevice::Internal);
+    configureInternalInterrupts(enabled);
   }
+}
+
+void configureInternalInterrupts(bool enabled)
+{
+  toggleGearSelection(enabled);
+  toggleSteering(enabled);
 }

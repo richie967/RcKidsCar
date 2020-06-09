@@ -1,33 +1,36 @@
 const int PIN_OUTPUT_STEERING = 10;
 const int PIN_OUTPUT_THROTTLE = 11;
 
-Servo powerServo;
+Servo throttleServo;
 
 void configureOutput()
 {
-  powerServo.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
+  configureSerialOutput();
+//  configureThrottleOutput();
+//  configureSteeringOutput();
+}
 
+void configureSerialOutput()
+{
   Serial.begin(9600);
   Serial.println("Arduino Car Started. Brmmm Brmmm.");
 }
 
+void configureThrottleOutput()
+{
+  throttleServo.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
+}
+
+void configureSteeringOutput()
+{
+  // TODO
+}
+
 void refreshOutput()
 {
-  // set the power servo state
-  if (currentState.GearSelection == Enums::GearSelection::Forward)
-  {
-    powerServo.write(map(currentState.Throttle, 0, 100, 90, 180));
-  }
-  else if (currentState.GearSelection == Enums::GearSelection::Reverse)
-  {
-    powerServo.write(map(currentState.Throttle, 0, 100, 90, 0));
-  }
-  else
-  {
-    powerServo.write(90);
-  }
-
-//  refreshSerialOutput();
+  refreshSerialOutput();
+//  refreshThrottleOutput();
+//  refreshSteeringOutput();
 }
 
 void refreshSerialOutput()
@@ -60,4 +63,22 @@ void refreshSerialOutput()
   Serial.println(currentState.SteeringAngle);
 
   delay(2000);
+}
+
+void refreshThrottleOutput()
+{
+  int throttle = 90;
+  
+  // set the power servo state
+  if (currentState.GearSelection == Enums::GearSelection::Forward)
+    throttle = map(currentState.Throttle, 0, 100, 90, 180);
+  else if (currentState.GearSelection == Enums::GearSelection::Reverse)
+    throttle = map(currentState.Throttle, 0, 100, 90, 0);
+
+  throttleServo.write(throttle);
+}
+
+void refreshSteeringOutput()
+{
+  // TODO
 }

@@ -8,41 +8,41 @@ const int PIN_INPUT_INTERNAL_PROXIMITY_ECHO = 9;
 const int CORE_CLOCK_FREQUENCY_HZ = 16000000;
 const int PROXIMITY_TIMER_MAX_COUNT = 255; // this is the max value for timer 1, 16 bit timer
 const int PROXIMITY_TIMER_PRESCALE_FACTOR = 1024; // alternative values are 1, 8, 64, 256 (if changing this must also change TCCR1B register in configureProximityTimerInterrupt)
-const int PROXIMITY_ECHO_FREQUENCY = 64; // minimum frequency for 8 bit timer is 64Hz (64 intervals per second)
 
 volatile int proximityPulseStart;
+volatile bool proximityPulseStateLast;
 
-void configureProximityInternal()
+void configureProximity()
 {
   pinMode(PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER, OUTPUT);
-  pinMode(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, INPUT);
 
   configureProximityTimerInterrupt();
-  PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, proximityPulseStarted, RISING);
+  PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, proximityPulseChanged, CHANGE);
 }
 
 void configureProximityTimerInterrupt()
 {
+  // timer0 used by micros function that we need, timer1 used by servo library, so must use timer2
   // ensure configuration and counter registers are cleared
-  TCCR0A = 0;
-  TCCR0B = 0;
-  TCNT0  = 0;
+  TCCR2A = 0;
+  TCCR2B = 0;
+  TCNT2  = 0;
 
-  // set compare match register
-  OCR0A = calculateProximityTimerRegister();
+  // set compare match register, results in an interrupt frequency of ~60Hz
+  OCR2A = PROXIMITY_TIMER_MAX_COUNT;
   
-  TCCR0A |= (1 << WGM01);                     // turn on CTC mode (clear timer when it matches the preset value)
-  TCCR0B |= (1 << CS02) | (1 << CS00);        // Set CS02 and CS00 bits to enable 1024 prescaler
-  TIMSK0 |= (1 << OCIE0A);                    // enable timer compare interrupt
+  TCCR2A |= (1 << WGM21);                     // turn on CTC mode (clear timer when it matches the preset value)
+  TCCR2B |= (1 << CS22) | (1 << CS20);        // Set CS22 and CS20 bits to enable 1024 prescaler
+  TIMSK2 |= (1 << OCIE2A);                    // enable timer compare interrupt
 }
 
-int calculateProximityTimerRegister()
-{
-  // calculate register count value
-  int registerValue = (CORE_CLOCK_FREQUENCY_HZ / (PROXIMITY_TIMER_PRESCALE_FACTOR * PROXIMITY_ECHO_FREQUENCY)) - 1; // there's an implicit cast from double to int here which can result in a slight innaccuracy
-
-  return (registerValue > PROXIMITY_TIMER_MAX_COUNT) ? PROXIMITY_TIMER_MAX_COUNT : registerValue;
-}
+//int calculateProximityTimerRegister()
+//{
+//  // calculate register count value
+//  int registerValue = (CORE_CLOCK_FREQUENCY_HZ / (PROXIMITY_TIMER_PRESCALE_FACTOR * PROXIMITY_ECHO_FREQUENCY)) - 1; // there's an implicit cast from double to int here which can result in a slight innaccuracy
+//
+//  return (registerValue > PROXIMITY_TIMER_MAX_COUNT) ? PROXIMITY_TIMER_MAX_COUNT : registerValue;
+//}
 
 // in-built interrupt routine for timer 0 (servo library uses timer 1)
 ISR(TIMER0_COMPA_vect)
@@ -56,16 +56,29 @@ ISR(TIMER0_COMPA_vect)
   digitalWrite(PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER, LOW);
 }
 
-void proximityPulseStarted()
+void proximityPulseChanged()
 {
-  proximityPulseStart = micros();
-  PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, proximityPulseComplete, FALLING);
-}
+  int timer = micros();
+  bool pulseState = digitalRead(PIN_INPUT_INTERNAL_PROXIMITY_ECHO);
 
-void proximityPulseComplete()
-{
+  // determine if pin condition is different from the last time we saw it
+  bool pulseStateChanged = pulseState != proximityPulseStateLast;
+
+  // keep a record of the current pin state
+  proximityPulseStateLast = pulseState;
+
+  // if we've missed a pulse somehow, try again next time
+  if (!pulseStateChanged)
+    return;
+
+  if (pulseState == HIGH)
+  {
+    // pin has gone high, start timing
+    proximityPulseStart = timer;
+    return;
+  }
+
+  // pin has gone low, calculate distance
   int duration = micros() - proximityPulseStart;
   currentState.Proximity = (duration / 2) * 0.0343; // 0.0343 is speed of sound in cm/microsecond
-  
-  PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, proximityPulseStarted, RISING);
 }
