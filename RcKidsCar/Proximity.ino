@@ -1,5 +1,5 @@
-const int PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER = 8;
-const int PIN_INPUT_INTERNAL_PROXIMITY_ECHO = 9;
+const int PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER = 9;
+const int PIN_INPUT_INTERNAL_PROXIMITY_ECHO = 8;
 
 // https://www.instructables.com/id/Arduino-Timer-Interrupts/
 // values for timer interrupt
@@ -29,11 +29,11 @@ void configureProximityTimerInterrupt()
   TCNT2  = 0;
 
   // set compare match register, results in an interrupt frequency of ~60Hz
-  OCR2A = PROXIMITY_TIMER_MAX_COUNT;
+  OCR2A = 255; //PROXIMITY_TIMER_MAX_COUNT;
   
   TCCR2A |= (1 << WGM21);                     // turn on CTC mode (clear timer when it matches the preset value)
   TCCR2B |= (1 << CS22) | (1 << CS20);        // Set CS22 and CS20 bits to enable 1024 prescaler
-  TIMSK2 |= (1 << OCIE2A);                    // enable timer compare interrupt
+  TIMSK2 |= (1 << OCIE2A);                     // enable timer compare interrupt
 }
 
 //int calculateProximityTimerRegister()
@@ -44,8 +44,8 @@ void configureProximityTimerInterrupt()
 //  return (registerValue > PROXIMITY_TIMER_MAX_COUNT) ? PROXIMITY_TIMER_MAX_COUNT : registerValue;
 //}
 
-// in-built interrupt routine for timer 0 (servo library uses timer 1)
-ISR(TIMER0_COMPA_vect)
+// in-built interrupt routine for timer 2 (servo library uses timer 1, micros() timer0)
+ISR(TIMER2_COMPA_vect)
 {
   // timer interrupt triggered, send an ultrasonic pulse
   // echo will be captured by pin change interrupt on echo pin
@@ -59,7 +59,7 @@ ISR(TIMER0_COMPA_vect)
 void proximityPulseChanged()
 {
   int timer = micros();
-  bool pulseState = digitalRead(PIN_INPUT_INTERNAL_PROXIMITY_ECHO);
+  bool pulseState = digitalRead(PIN_INPUT_INTERNAL_PROXIMITY_ECHO);  
 
   // determine if pin condition is different from the last time we saw it
   bool pulseStateChanged = pulseState != proximityPulseStateLast;

@@ -4,12 +4,13 @@ const int PIN_OUTPUT_STEERING = 10;
 const int PIN_OUTPUT_THROTTLE = 11;
 
 Servo throttleServo;
+Servo steeringServo;
 
 void configureOutput()
 {
-  configureSerialOutput();
-//  configureThrottleOutput();
-//  configureSteeringOutput();
+//  configureSerialOutput();
+  configureThrottleOutput();
+  configureSteeringOutput();
 }
 
 void configureSerialOutput()
@@ -25,14 +26,14 @@ void configureThrottleOutput()
 
 void configureSteeringOutput()
 {
-  // TODO
+  steeringServo.attach(PIN_OUTPUT_STEERING, 1000, 2000);
 }
 
 void refreshOutput()
 {
-  refreshSerialOutput();
-//  refreshThrottleOutput();
-//  refreshSteeringOutput();
+//  refreshSerialOutput();
+  refreshThrottleOutput();
+  refreshSteeringOutput();
 }
 
 void refreshSerialOutput()
@@ -76,11 +77,11 @@ void refreshThrottleOutput()
     throttle = map(currentState.Throttle, 0, 100, 90, 180);
   else if (currentState.GearSelection == Enums::GearSelection::Reverse)
     throttle = map(currentState.Throttle, 0, 100, 90, 0);
-
+    
   throttleServo.write(throttle);
 }
 
 void refreshSteeringOutput()
 {
-  // TODO
+  steeringServo.write(currentState.SteeringAngle);
 }

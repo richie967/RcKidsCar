@@ -35,7 +35,7 @@ void steeringRotationChanged()
   unsigned char result = internalSteering.process();
   
   if (result == DIR_CW)
-    currentState.incrementSteeringAngle();
-  else if (result == DIR_CCW)
     currentState.decrementSteeringAngle();
+  else if (result == DIR_CCW)
+    currentState.incrementSteeringAngle();
 }

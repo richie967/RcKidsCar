@@ -9,8 +9,9 @@ const int REMOTE_MIDDLE_VALUE_MAXIMUM = 1550;
 const int REMOTE_HIGH_VALUE_MINIMUM = 1950;
 const int REMOTE_HIGH_VALUE_MAXIMUM = 2050;
 const int STEERING_ANGLE_CENTRE = 90;
-const int STEERING_ANGLE_MINIMUM = 70;
-const int STEERING_ANGLE_MAXIMUM = 110;
+const int STEERING_ANGLE_MINIMUM = 50;
+const int STEERING_ANGLE_MAXIMUM = 130;
+const int STEERING_ANGLE_INCREMENT = 3;
 const int INTERNAL_THROTTLE_MAXIMUM_OUTPUT = 50;
 
 namespace Enums
@@ -54,7 +55,7 @@ struct ControlState
   Enums::ControlDevice ControlDevice = Enums::ControlDevice::Internal;
   Enums::GearSelection GearSelection = Enums::GearSelection::Neutral;
   int Proximity;
-  int SteeringAngle;
+  int SteeringAngle = STEERING_ANGLE_CENTRE;
   int Throttle;
 
   void setRemoteStatus(Enums::RemoteStatus status)
@@ -123,12 +124,12 @@ struct ControlState
 
   void incrementSteeringAngle()
   {
-    setSteeringAngle(SteeringAngle + 1);
+    setSteeringAngle(SteeringAngle + STEERING_ANGLE_INCREMENT);
   }
 
   void decrementSteeringAngle()
   {
-    setSteeringAngle(SteeringAngle - 1);
+    setSteeringAngle(SteeringAngle - STEERING_ANGLE_INCREMENT);
   }
 
   void setSteeringAngle(int angle)
@@ -156,10 +157,10 @@ void setup() {
   configureControlMode();
   configureGearSelection();
   configureSteering();
-  configureProximity();
+//  configureProximity();
 
   // configure remote inputs
-  configureRemoteControl();
+//  configureRemoteControl();
 
   // configure output devices
   configureOutput();
