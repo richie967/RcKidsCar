@@ -1,4 +1,3 @@
-// pins 0 + 1 are used for serial communication, cannot be used if serial.begin is called
 const int PIN_INPUT_INTERNAL_GEAR_SELECTION_FORWARD = A1;
 const int PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE = A2;
 
