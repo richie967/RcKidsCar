@@ -1,5 +1,8 @@
 #include "libraries/PinChangeInt/PinChangeInt.h"
 
+// uncomment the line below to switch RC control from separate channels to PPM
+//#define USE_REMOTE_PPM
+
 // input signal configuration
 // remote reciever sends PWM signals in the range ~1000 to ~2000
 const int REMOTE_LOW_VALUE_MINIMUM = 950;
