@@ -1,0 +1,21 @@
+A0  - Control Mode
+A1  - Gear Select Forward
+A2  - Gear Select Reverse
+A3  - Throttle Pedal
+A4
+A5
+
+0
+1
+2   - Steering Data
+3   - Steering Clock
+4   - Remote Channel 1 (Steering) / Remote PPM
+5   - Remote Channel 2 (Throttle)
+6   - Remote Channel 3 (Control Mode)
+7   - Remote Channel 4 (Failsafe)
+8   - Proximity Echo
+9   - Proximity Trigger
+10  - Steering Servo (Output)
+11  - Electronic Speed Controller (Output)
+12
+13

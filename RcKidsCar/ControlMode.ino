@@ -1,4 +1,4 @@
-const int PIN_INPUT_INTERNAL_CONTROL_MODE = 7;
+const int PIN_INPUT_INTERNAL_CONTROL_MODE = A0;
 
 void configureControlMode()
 {
