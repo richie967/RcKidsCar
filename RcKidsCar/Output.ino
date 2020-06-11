@@ -3,7 +3,7 @@
 const int PIN_OUTPUT_STEERING = 10;
 const int PIN_OUTPUT_THROTTLE = 11;
 
-Servo throttleServo;
+Servo throttleESC;
 Servo steeringServo;
 
 volatile int throttleLast;
@@ -24,7 +24,7 @@ void configureSerialOutput()
 
 void configureThrottleOutput()
 {
-  throttleServo.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
+  throttleESC.attach(PIN_OUTPUT_THROTTLE, 1000, 2000);
 }
 
 void configureSteeringOutput()
@@ -85,7 +85,7 @@ void refreshThrottleOutput()
     return;
 
   throttleLast = throttle;
-  throttleServo.write(throttle);
+  throttleESC.write(throttle);
 }
 
 void refreshSteeringOutput()
