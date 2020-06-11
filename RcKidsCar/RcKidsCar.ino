@@ -157,7 +157,7 @@ void setup() {
   configureControlMode();
   configureGearSelection();
   configureSteering();
-//  configureProximity();
+  configureProximity();
 
   // configure remote inputs
 //  configureRemoteControl();

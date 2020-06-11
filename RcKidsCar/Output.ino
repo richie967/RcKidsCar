@@ -6,6 +6,9 @@ const int PIN_OUTPUT_THROTTLE = 11;
 Servo throttleServo;
 Servo steeringServo;
 
+volatile int throttleLast;
+volatile int steeringLast;
+
 void configureOutput()
 {
 //  configureSerialOutput();
@@ -77,11 +80,19 @@ void refreshThrottleOutput()
     throttle = map(currentState.Throttle, 0, 100, 90, 180);
   else if (currentState.GearSelection == Enums::GearSelection::Reverse)
     throttle = map(currentState.Throttle, 0, 100, 90, 0);
-    
+
+  if (throttle == throttleLast)
+    return;
+
+  throttleLast = throttle;
   throttleServo.write(throttle);
 }
 
 void refreshSteeringOutput()
 {
+  if (currentState.SteeringAngle == steeringLast)
+    return;
+
+  steeringLast = currentState.SteeringAngle;
   steeringServo.write(currentState.SteeringAngle);
 }
