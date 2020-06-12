@@ -163,7 +163,7 @@ void setup() {
   configureProximity();
 
   // configure remote inputs
-//  configureRemoteControl();
+  configureRemoteControl();
 
   // configure output devices
   configureOutput();

@@ -16,6 +16,13 @@ void configureOutput()
   configureSteeringOutput();
 }
 
+void refreshOutput()
+{
+//  refreshSerialOutput();
+  refreshThrottleOutput();
+  refreshSteeringOutput();
+}
+
 void configureSerialOutput()
 {
   Serial.begin(9600);
@@ -30,13 +37,6 @@ void configureThrottleOutput()
 void configureSteeringOutput()
 {
   steeringServo.attach(PIN_OUTPUT_STEERING, 1000, 2000);
-}
-
-void refreshOutput()
-{
-//  refreshSerialOutput();
-  refreshThrottleOutput();
-  refreshSteeringOutput();
 }
 
 void refreshSerialOutput()

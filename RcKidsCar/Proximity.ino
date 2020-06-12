@@ -5,9 +5,9 @@ const int PIN_INPUT_INTERNAL_PROXIMITY_ECHO = 8;
 // values for timer interrupt
 // timer0, timer2 are 8 bit, max count value is 255
 // timer1 is 16 bit, max count value is 65535
-const int CORE_CLOCK_FREQUENCY_HZ = 16000000;
-const int PROXIMITY_TIMER_MAX_COUNT = 255; // this is the max value for timer 1, 16 bit timer
-const int PROXIMITY_TIMER_PRESCALE_FACTOR = 1024; // alternative values are 1, 8, 64, 256 (if changing this must also change TCCR1B register in configureProximityTimerInterrupt)
+//const int CORE_CLOCK_FREQUENCY_HZ = 16000000;
+//const int PROXIMITY_TIMER_MAX_COUNT = 255; // this is the max value for timer 1, 16 bit timer
+//const int PROXIMITY_TIMER_PRESCALE_FACTOR = 1024; // alternative values are 1, 8, 64, 256 (if changing this must also change TCCR1B register in configureProximityTimerInterrupt)
 
 volatile int proximityPulseStart;
 volatile bool proximityPulseStateLast;

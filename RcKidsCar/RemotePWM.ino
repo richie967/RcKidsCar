@@ -8,7 +8,7 @@ const int PIN_INPUT_REMOTE_FAILSAFE = 7;      // RC channel 4
 volatile int remotePin[4] = { PIN_INPUT_REMOTE_STEERING, PIN_INPUT_REMOTE_THROTTLE, PIN_INPUT_REMOTE_CONTROL_MODE, PIN_INPUT_REMOTE_FAILSAFE };
 volatile int remotePulseStart[4];
 volatile bool remotePulseStateLast[4];
-volatile void (* channelHandlers [4])(int) = { handleRemoteSteering, handleRemoteThrottle, handleRemoteControlMode, handleRemoteStatus };
+void (* channelHandlers [4])(int) = { handleRemoteSteering, handleRemoteThrottle, handleRemoteControlMode, handleRemoteStatus };
 
 void configureRemoteControl()
 {
