@@ -30,9 +30,9 @@ void gearSelectionChanged()
   int reversePinValue = !digitalRead(PIN_INPUT_INTERNAL_GEAR_SELECTION_REVERSE);
 
   if (forwardPinValue)
-    currentState.GearSelection = Enums::GearSelection::Forward;
+    currentState.setGearSelection(Enums::GearSelection::Forward);
   else if (reversePinValue)
-    currentState.GearSelection = Enums::GearSelection::Reverse;
+    currentState.setGearSelection(Enums::GearSelection::Reverse);
   else
-    currentState.GearSelection = Enums::GearSelection::Neutral;
+    currentState.setGearSelection(Enums::GearSelection::Neutral);
 }

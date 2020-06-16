@@ -29,24 +29,24 @@ void handleRemoteThrottle(int throttleValue)
   if (currentState.ControlDevice != Enums::ControlDevice::Remote)
     return;
   
-  if (throttleValue <= REMOTE_MIDDLE_VALUE_MINIMUM)
+  if (throttleValue < REMOTE_MIDDLE_VALUE_MINIMUM)
   {
     // negative throttle (reverse)
     int throttle = map(throttleValue, REMOTE_LOW_VALUE_MAXIMUM, REMOTE_MIDDLE_VALUE_MINIMUM, -100, 0) * -1;
     currentState.setThrottle(throttle);
     currentState.GearSelection = Enums::GearSelection::Reverse;
   }
-  else if (throttleValue >= 1500)
+  else if (throttleValue > REMOTE_MIDDLE_VALUE_MAXIMUM)
   {
     // positive throttle (forward)
     int throttle = map(throttleValue, REMOTE_MIDDLE_VALUE_MAXIMUM, REMOTE_HIGH_VALUE_MINIMUM, 0, 100);
     currentState.setThrottle(throttle);
-    currentState.GearSelection = Enums::GearSelection::Forward;
+    currentState.setGearSelection(Enums::GearSelection::Forward);
   }
   else
   {
     currentState.setThrottle(0);
-    currentState.GearSelection = Enums::GearSelection::Neutral;
+    currentState.setGearSelection(Enums::GearSelection::Neutral);
   }
 }
 
