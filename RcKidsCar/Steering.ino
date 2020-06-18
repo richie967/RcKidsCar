@@ -32,6 +32,10 @@ void toggleSteering(bool enabled)
 
 void steeringRotationChanged()
 {
+  // bypass if we're not using internal controls
+  if (currentState.ControlDevice != Enums::ControlDevice::Internal)
+    return;
+  
   unsigned char result = internalSteering.process();
   
   if (result == DIR_CW)

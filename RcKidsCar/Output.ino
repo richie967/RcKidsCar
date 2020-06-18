@@ -32,24 +32,30 @@ void configureSteeringOutput()
   steeringServo.write(90);
 }
 
-void refreshThrottleOutput(int throttle, Enums::GearSelection gearSelection)
-{  
+void refreshThrottleOutput(Enums::GearSelection gearSelection, int throttle, int throttleRestrictionFactor)
+{
+  // reduce throttle by restriction factor
+  int restrictedThrottle = (throttle / 100) * throttleRestrictionFactor;
+  
   // set the power servo state
   int throttleOut = 90;
+
+  // if throttle output is now 0 and we are travelling forward, briefly apply brakes (full power reverse)
+  if (restrictedThrottle == 0 && gearSelection == Enums::GearSelection::Forward)
+  {
+    throttleESC.write(0);
+    delay(10);
+  }
   
   if (gearSelection == Enums::GearSelection::Forward)
-    throttleOut = map(currentState.Throttle, 0, 100, 90, 180);
+    throttleOut = map(restrictedThrottle, 0, 100, 90, 180);
   else if (gearSelection == Enums::GearSelection::Reverse)
-    throttleOut = map(currentState.Throttle, 0, 100, 90, 0);
+    throttleOut = map(restrictedThrottle, 0, 100, 90, 0);
 
   throttleESC.write(throttleOut);
-//  Serial.print("Throttle: ");
-//  Serial.println(throttleOut);
 }
 
 void refreshSteeringOutput(int angle)
 {
   steeringServo.write(currentState.SteeringAngle);
-//  Serial.print("Steering: ");
-//  Serial.println(angle);
 }

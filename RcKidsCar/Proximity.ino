@@ -36,14 +36,6 @@ void configureProximityTimerInterrupt()
   TIMSK2 |= (1 << OCIE2A);                     // enable timer compare interrupt
 }
 
-//int calculateProximityTimerRegister()
-//{
-//  // calculate register count value
-//  int registerValue = (CORE_CLOCK_FREQUENCY_HZ / (PROXIMITY_TIMER_PRESCALE_FACTOR * PROXIMITY_ECHO_FREQUENCY)) - 1; // there's an implicit cast from double to int here which can result in a slight innaccuracy
-//
-//  return (registerValue > PROXIMITY_TIMER_MAX_COUNT) ? PROXIMITY_TIMER_MAX_COUNT : registerValue;
-//}
-
 // in-built interrupt routine for timer 2 (servo library uses timer 1, micros() timer0)
 ISR(TIMER2_COMPA_vect)
 {
@@ -80,5 +72,7 @@ void proximityPulseChanged()
 
   // pin has gone low, calculate distance
   int duration = micros() - proximityPulseStart;
-  currentState.Proximity = (duration / 2) * 0.0343; // 0.0343 is speed of sound in cm/microsecond
+  int distance = (duration / 2) * 0.0343; // 0.0343 is speed of sound in cm/microsecond
+
+  currentState.setProximity(distance);
 }

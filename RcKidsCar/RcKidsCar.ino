@@ -16,6 +16,10 @@ const int STEERING_ANGLE_MINIMUM = 40;
 const int STEERING_ANGLE_MAXIMUM = 140;
 const int STEERING_ANGLE_INCREMENT = 10;
 const int INTERNAL_THROTTLE_MAXIMUM_OUTPUT = 50;
+const int REMOTE_THROTTLE_MAXIMUM_OUTPUT = 100;
+const int PROXIMITY_STOP_DISTANCE = 50;
+const int PROXIMITY_SLOW_DISTANCE = 300;
+const int THROTTLE_RESTRICTION_FACTOR_UNLIMITED = 100;
 
 namespace Enums
 {
@@ -52,7 +56,7 @@ struct ControlState
   // event handlers
   (* controlDeviceChanged)(Enums::ControlDevice, Enums::ControlDevice);
   (* steeringOutputChanged)(int);
-  (* throttleOutputChanged)(int, Enums::GearSelection);
+  (* throttleOutputChanged)(Enums::GearSelection, int, int);
   
   // default to in car control
   Enums::RemoteStatus RemoteStatus = Enums::RemoteStatus::Disabled;
@@ -63,10 +67,11 @@ struct ControlState
   int Proximity;
   int SteeringAngle = STEERING_ANGLE_CENTRE;
   int Throttle;
+  int ThrottleRestrictionFactor = THROTTLE_RESTRICTION_FACTOR_UNLIMITED;
 
-  void setRemoteStatus(Enums::RemoteStatus status)
+  void setRemoteStatus(Enums::RemoteStatus remoteStatus)
   {
-    RemoteStatus = status;
+    RemoteStatus = remoteStatus;
     determineControlDevice();
   }
 
@@ -105,34 +110,20 @@ struct ControlState
 
   void setGearSelection(Enums::GearSelection gearSelection)
   {
+    // detect changes in gear selection
     Enums::GearSelection gearSelectionLast = GearSelection;
 
     GearSelection = gearSelection;
 
     // changing gear selection is equivalent to a modification to the throttle, needs to trigger the same behaviour
-    if (GearSelection != gearSelection && throttleOutputChanged)
-      throttleOutputChanged(Throttle, GearSelection);
-  }
-
-  void setThrottle(int throttle)
-  {
-    int throttleLast = Throttle;
-    
-    // ensure throttle never exceeds max/min values
-    int throttleMax = 100;
-    
-    if (ControlDevice == Enums::ControlDevice::Internal)
-      throttleMax = INTERNAL_THROTTLE_MAXIMUM_OUTPUT;
-    
-    if (throttle < 0)
-      Throttle = 0;
-    else if (throttle > throttleMax)
-      Throttle = throttleMax;
-    else
-      Throttle = throttle;
-
-    if (Throttle != throttleLast && throttleOutputChanged)
-      throttleOutputChanged(Throttle, GearSelection);
+    if (GearSelection != gearSelection)
+    {
+      // when de-selecting forward remove throttle restriction
+      if (GearSelection != Enums::GearSelection::Forward)
+        setThrottleRestrictionFactor(THROTTLE_RESTRICTION_FACTOR_UNLIMITED);
+      
+      refreshThrottleOutput();
+    }
   }
 
   void incrementSteeringAngle()
@@ -147,6 +138,7 @@ struct ControlState
 
   void setSteeringAngle(int angle)
   {
+    // detect changes in steering angle
     int steeringlast = SteeringAngle;
     
     if (ControlDevice == Enums::ControlDevice::None)
@@ -162,10 +154,79 @@ struct ControlState
     if (SteeringAngle != steeringlast && steeringOutputChanged)
       steeringOutputChanged(SteeringAngle);
   }
+
+  void setThrottle(int throttle)
+  {
+    // detect changes in throttle
+    int throttleLast = Throttle;
+    
+    // ensure throttle never exceeds max/min values
+    int throttleMax = getMaxThrottle();
+    
+    if (throttle < 0)
+      Throttle = 0;
+    else if (throttle > throttleMax)
+      Throttle = throttleMax;
+    else
+      Throttle = throttle;
+
+    // update output when throttle value has changed
+    if (Throttle != throttleLast)
+      refreshThrottleOutput();
+  }
+
+  int getMaxThrottle()
+  {
+    if (ControlDevice == Enums::ControlDevice::None)
+      return 0;
+
+    return (ControlDevice == Enums::ControlDevice::Internal) ? INTERNAL_THROTTLE_MAXIMUM_OUTPUT : REMOTE_THROTTLE_MAXIMUM_OUTPUT;
+  }
+
+  void setProximity(int distance)
+  {
+    bool proximityChanged = Proximity != distance;
+    
+    Proximity = distance;
+
+    // if no change in proximity do nothing
+    if (!proximityChanged)
+      return;
+
+    // if car is not in forward gear do nothing
+    if (GearSelection != Enums::GearSelection::Forward)
+      return;
+
+    // apply a throttle restriction factor within proximity range
+    int factor = map(Proximity, PROXIMITY_STOP_DISTANCE, PROXIMITY_SLOW_DISTANCE, 0, 100);
+    setThrottleRestrictionFactor(factor);
+  }
+
+  void setThrottleRestrictionFactor(int factor)
+  {
+    // detect changes in restriction factor
+    int factorLast = ThrottleRestrictionFactor;
+
+    if (factor < 0)
+      ThrottleRestrictionFactor = 0;
+    else if (factor > THROTTLE_RESTRICTION_FACTOR_UNLIMITED)
+      ThrottleRestrictionFactor = THROTTLE_RESTRICTION_FACTOR_UNLIMITED;
+    else
+      ThrottleRestrictionFactor = factor;
+
+    if (ThrottleRestrictionFactor != factorLast)
+      refreshThrottleOutput();
+  }
+
+  void refreshThrottleOutput()
+  {
+    if (throttleOutputChanged)
+      throttleOutputChanged(GearSelection, Throttle, ThrottleRestrictionFactor);
+  }
 } currentState;
 
-volatile bool updateThrottle;
-volatile bool updateSteering;
+volatile bool refreshSteering;
+volatile bool refreshThrottle;
 
 void setup() {
   // disable interrupts during setup
@@ -173,10 +234,10 @@ void setup() {
 
   // hook up handler for when the control device changes
   currentState.controlDeviceChanged = controlDeviceChanged;
-  currentState.throttleOutputChanged = throttleOutputChanged;
   currentState.steeringOutputChanged = steeringOutputChanged;
+  currentState.throttleOutputChanged = throttleOutputChanged;
   
-  // configure inputs, default state is internal controls enabled
+  // configure internal inputs, default state is internal controls enabled
   configureControlMode();
   configureGearSelection();
   configureSteering();
@@ -197,42 +258,37 @@ void loop()
   // poll non-interrupt devices
   pollThrottle();
 
-  // update output if changes
-  if (updateThrottle)
-  {
-    refreshThrottleOutput(currentState.Throttle, currentState.GearSelection);
-    updateThrottle = false;
-  }
-
-  if (updateSteering)
+  // refresh output
+  if (refreshSteering)
   {
     refreshSteeringOutput(currentState.SteeringAngle);
-    updateSteering = false;
+    refreshSteering = false;
+  }
+
+  if (refreshThrottle)
+  {
+    refreshThrottleOutput(currentState.GearSelection, currentState.Throttle, currentState.ThrottleRestrictionFactor);
+    refreshThrottle = false;
   }
 }
 
-void controlDeviceChanged(Enums::ControlDevice oldDevice, Enums::ControlDevice newDevice)
+void controlDeviceChanged(Enums::ControlDevice deviceLast, Enums::ControlDevice device)
 {
   // changing to or from internal control device we must enable/disabled internal input interrupts
-  if (oldDevice == Enums::ControlDevice::Internal || newDevice == Enums::ControlDevice::Internal)
+  if (deviceLast == Enums::ControlDevice::Internal || device == Enums::ControlDevice::Internal)
   {
-    bool enabled = (newDevice == Enums::ControlDevice::Internal);
-    configureInternalInterrupts(enabled);
+    bool enabled = (device == Enums::ControlDevice::Internal);
+    toggleGearSelection(enabled);
+    toggleSteering(enabled);
   }
-}
-
-void configureInternalInterrupts(bool enabled)
-{
-  toggleGearSelection(enabled);
-  toggleSteering(enabled);
-}
-
-void throttleOutputChanged(int throttle, Enums::GearSelection gearSelection)
-{  
-  updateThrottle = true;
 }
 
 void steeringOutputChanged(int angle)
 {
-  updateSteering = true;
+  refreshSteering = true;
+}
+
+void throttleOutputChanged(Enums::GearSelection gearSelection, int throttle, int throttleRestrictionFactor)
+{
+  refreshThrottle = true;
 }
