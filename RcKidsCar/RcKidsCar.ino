@@ -19,7 +19,6 @@ const int INTERNAL_THROTTLE_MAXIMUM_OUTPUT = 50;
 const int REMOTE_THROTTLE_MAXIMUM_OUTPUT = 100;
 const int PROXIMITY_STOP_DISTANCE = 75;
 const int PROXIMITY_SLOW_DISTANCE = 300;
-const int PROXIMITY_ROLLING_AVERAGE_COUNT = 5;
 const int THROTTLE_RESTRICTION_FACTOR_MINIMUM = 25;
 const int THROTTLE_RESTRICTION_FACTOR_MAXIMUM = 100;
 
@@ -59,7 +58,6 @@ struct ControlState
   (* controlDeviceChanged)(Enums::ControlDevice, Enums::ControlDevice);
   (* steeringOutputChanged)(int);
   (* throttleOutputChanged)(Enums::GearSelection, int, int);
-  (* brake)();
   
   // default to in car control
   Enums::RemoteStatus RemoteStatus = Enums::RemoteStatus::Disabled;
@@ -67,8 +65,7 @@ struct ControlState
   Enums::ControlMode InternalControlMode = Enums::ControlMode::Internal;
   Enums::ControlDevice ControlDevice = Enums::ControlDevice::Internal;
   Enums::GearSelection GearSelection = Enums::GearSelection::Neutral;
-  int Proximity[PROXIMITY_ROLLING_AVERAGE_COUNT];
-  int ProximityCounter;
+  int Proximity;
   int SteeringAngle = STEERING_ANGLE_CENTRE;
   int Throttle;
   int ThrottleRestrictionFactor = THROTTLE_RESTRICTION_FACTOR_MAXIMUM;
@@ -189,17 +186,12 @@ struct ControlState
 
   void setProximity(int distance)
   {
-    int proximityLast = calculateProximityAverage();
-
-    if (ProximityCounter == PROXIMITY_ROLLING_AVERAGE_COUNT)
-      ProximityCounter = 0;
+    int proximityLast = Proximity;
     
-    Proximity[ProximityCounter] = distance;
-    ProximityCounter++;
+    Proximity = distance;
 
     // if no change in proximity do nothing
-    int proximityAverage = calculateProximityAverage();
-    if (proximityAverage == proximityLast)
+    if (Proximity == proximityLast)
       return;
 
     // if car is not in forward gear do nothing
@@ -209,31 +201,12 @@ struct ControlState
     // apply a throttle restriction factor within proximity range
     int factor = THROTTLE_RESTRICTION_FACTOR_MAXIMUM;
 
-    if (proximityAverage <= PROXIMITY_STOP_DISTANCE)
-    {
-      // the first time we're within the stop distance we need to brake
-      if (proximityLast > proximityAverage && brake)
-      {
-        brake();
-        return;
-      }
-
+    if (Proximity <= PROXIMITY_STOP_DISTANCE)
       factor = 0;
-    }
     else
       factor = map(Proximity, PROXIMITY_STOP_DISTANCE, PROXIMITY_SLOW_DISTANCE, THROTTLE_RESTRICTION_FACTOR_MINIMUM, THROTTLE_RESTRICTION_FACTOR_MAXIMUM);
     
     setThrottleRestrictionFactor(factor);
-  }
-
-  int calculateProximityAverage()
-  {
-    double sum = 0.0;
-
-    for (int count = 0; count < PROXIMITY_ROLLING_AVERAGE_COUNT; count++)
-      sum += Proximity[count];
-
-    return sum / PROXIMITY_ROLLING_AVERAGE_COUNT;
   }
 
   void setThrottleRestrictionFactor(int factor)
@@ -261,7 +234,6 @@ struct ControlState
 
 volatile bool refreshSteering;
 volatile bool refreshThrottle;
-volatile bool mustBrake;
 
 void setup() {
   // disable interrupts during setup
@@ -271,7 +243,6 @@ void setup() {
   currentState.controlDeviceChanged = controlDeviceChanged;
   currentState.steeringOutputChanged = steeringOutputChanged;
   currentState.throttleOutputChanged = throttleOutputChanged;
-  currentState.brake = handleBrake;
   
   // configure internal inputs, default state is internal controls enabled
   configureControlMode();
@@ -293,13 +264,6 @@ void loop()
 {
   // poll non-interrupt devices
   pollThrottle();
-
-  // brake if required
-  if (mustBrake)
-  {
-    applyBrake();
-    mustBrake = false;
-  }
 
   // refresh output
   if (refreshSteering)
@@ -334,9 +298,4 @@ void steeringOutputChanged(int angle)
 void throttleOutputChanged(Enums::GearSelection gearSelection, int throttle, int throttleRestrictionFactor)
 {
   refreshThrottle = true;
-}
-
-void handleBrake()
-{
-//  mustBrake = true;
 }

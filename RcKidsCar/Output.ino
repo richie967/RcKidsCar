@@ -6,8 +6,6 @@ const int PIN_OUTPUT_THROTTLE = 11;
 Servo steeringServo;
 Servo throttleESC;
 
-volatile int throttleLast = 90;
-
 void configureOutput()
 {
 //  configureSerialOutput();
@@ -53,21 +51,5 @@ void refreshThrottleOutput(Enums::GearSelection gearSelection, int throttle, int
   else if (gearSelection == Enums::GearSelection::Reverse)
     throttleOut = map(throttle, 0, 100, 90, 0);
 
-  writeThrottle(throttleOut);
-}
-
-void applyBrake()
-{
-  if (throttleLast <= 90)
-    return;
-  
-  writeThrottle(0);
-  delay(100);
-  writeThrottle(90);
-}
-
-void writeThrottle(int throttle)
-{
-  throttleLast = throttle;
-  throttleESC.write(throttle);
+  throttleESC.write(throttleOut);
 }
