@@ -17,7 +17,7 @@ void configureProximity()
   pinMode(PIN_INPUT_INTERNAL_PROXIMITY_TRIGGER, OUTPUT);
 
   configureProximityTimerInterrupt();
-  PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, proximityPulseChanged, CHANGE);
+  // PCintPort::attachInterrupt(PIN_INPUT_INTERNAL_PROXIMITY_ECHO, proximityPulseChanged, CHANGE);
 }
 
 void configureProximityTimerInterrupt()
